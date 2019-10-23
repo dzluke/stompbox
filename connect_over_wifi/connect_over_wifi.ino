@@ -5,6 +5,9 @@
 #include <OSCBundle.h>
 #include <OSCData.h>
 
+#define NUM_DIGITAL_PINS 12
+#define NUM_ANALOG_PINS 12
+
 char ssid[] = "DFO";
 char pass[] = "payasparab";
 
@@ -60,23 +63,23 @@ void setup() {
   Serial.println(localPort);
 }
 
-int i = 0;
+
+char* digital_addrs[] = {"/digital/0", "/digital/1", "/digital/2", "/digital/3", "/digital/4", "/digital/5", "/digital/6", "/digital/7", "/digital/8", "/digital/9", "/digital/10", "/digital/11"};
 
 void loop() {
   // put your main code here, to run repeatedly:
-  OSCMessage msg("/test");
-  Serial.printf("Sending packet %d\n", i);
-  msg.add(i);
+  OSCBundle bndl;
+  for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
+    printf("Sending %s\n", digital_addrs[i]);
+    int num = random(50);
+    bndl.add(digital_addrs[i]).add(num);
+  }
   if (Udp.beginPacket(dest_ip, dest_port) == 0) {
     Serial.println("ERROR: beginPacket failed");
   }
-  msg.send(Udp);
+  bndl.send(Udp);
   Udp.endPacket();
-  msg.empty();
-  i++;
+  bndl.empty();
+  
   delay(2000);
-  
-  
-  
-
 }
