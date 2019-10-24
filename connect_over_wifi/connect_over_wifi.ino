@@ -22,13 +22,13 @@ void setup() {
   // put your setup code here, to run once:
 
   //Setup pins
-//  for (int i = 0; i < 24; i++) {
-//    //pin 13 has a built-in resistor on its LED which would require an additional resistor.  Lets leave it out
-//    if (i != 12 && i != 13) { 
-//      //all pins in pullup mode (inverts output but simplifies wiring)
-//      pinMode(i, INPUT_PULLUP);
-//    }
-//  }
+  //  for (int i = 0; i < 24; i++) {
+  //    //pin 13 has a built-in resistor on its LED which would require an additional resistor.  Lets leave it out
+  //    if (i != 12 && i != 13) {
+  //      //all pins in pullup mode (inverts output but simplifies wiring)
+  //      pinMode(i, INPUT_PULLUP);
+  //    }
+  //  }
 
   //Setup WiFi
   Serial.begin(115200);
@@ -36,7 +36,7 @@ void setup() {
   Serial.println(ssid);
   WiFi.begin(ssid, pass);
 
-  int g=0;
+  int g = 0;
   Serial.print("WiFi Connecting...");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -48,7 +48,7 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  
+
   Serial.println("Starting UDP");
   Udp.begin(localPort);
   Serial.print("Local port: ");
@@ -64,15 +64,21 @@ void setup() {
 }
 
 
-char* digital_addrs[] = {"/digital/0", "/digital/1", "/digital/2", "/digital/3", "/digital/4", "/digital/5", "/digital/6", "/digital/7", "/digital/8", "/digital/9", "/digital/10", "/digital/11"};
-
 void loop() {
   // put your main code here, to run repeatedly:
   OSCBundle bndl;
+  char addr[12];
   for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
-    printf("Sending %s\n", digital_addrs[i]);
+    sprintf(addr, "/digital/%d", i);
     int num = random(50);
-    bndl.add(digital_addrs[i]).add(num);
+    printf("Sending %s : %d\n", addr, num);
+    bndl.add(addr).add(num);
+  }
+  for (int i = 0; i < NUM_ANALOG_PINS; i++) {
+    sprintf(addr, "/analog/%d", i);
+    int num = random(50);
+    printf("Sending %s : %d\n", addr, num);
+    bndl.add(addr).add(num);
   }
   if (Udp.beginPacket(dest_ip, dest_port) == 0) {
     Serial.println("ERROR: beginPacket failed");
@@ -80,6 +86,6 @@ void loop() {
   bndl.send(Udp);
   Udp.endPacket();
   bndl.empty();
-  
+
   delay(2000);
 }
