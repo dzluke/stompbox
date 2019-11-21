@@ -70,6 +70,12 @@ void calibrate(OSCMessage &msg) {
   Serial.print("Setting calibration to: ");
   Serial.println(calibration);
 
+  // Calibrate all digital pins
+  if (calibration) {
+    for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
+      digital_initial_state[i] = digitalRead(i);
+    }
+  }
   
 }
 
