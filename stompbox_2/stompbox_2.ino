@@ -4,6 +4,7 @@
 #include <OSCMessage.h>
 #include <OSCBundle.h>
 #include <OSCData.h>
+#include <LiquidCrystal_I2C.h>
 
 #define NUM_DIGITAL_PINS 12
 #define NUM_ANALOG_PINS 12
@@ -13,9 +14,9 @@
 // Calibration time in ms 
 #define CALIBRATION_TIME 10000
 
-char ssid[] = "*****";
-char pass[] = "*****";
-IPAddress dest_ip(192, 168, 1, 107);
+char ssid[] = "***";
+char pass[] = "***";
+IPAddress dest_ip(255, 255, 255, 255);
 
 const int dest_port = 7000;
 const int localPort = 7000; //used for Udp.begin() which listens
@@ -26,11 +27,23 @@ int analog_max[NUM_ANALOG_PINS];
 int analog_min[NUM_ANALOG_PINS];
 unsigned long calibration_end_time = -1;
 
+// set the LCD number of columns and rows
+int lcdColumns = 16;
+int lcdRows = 2;
+
+// set LCD address, number of columns and rows
+LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
+
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 
 void setup() {
-  // put your setup code here, to run once:
+  
+  // initialize LCD
+  lcd.init();
+  // turn on LCD backlight
+  lcd.backlight();
+  lcd.setCursor(0, 0);
 
   //Setup WiFi
   Serial.begin(115200);
@@ -43,6 +56,12 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    if(g%2==0){
+      lcd.setCursor(0,0);
+      lcd.print("WiFi Connecting...");
+    }else{
+      lcd.clear();
+    }
   }
 
   Serial.println("");
@@ -63,6 +82,11 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.print("Port: ");
   Serial.println(localPort);
+
+  //DISPLAY IP ADDRESS
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(WiFi.localIP());
 }
 
 
@@ -115,15 +139,17 @@ void loop() {
   
   int val;
   for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
-    sprintf(addr, "/digital/%d", i);
-    val = digitalRead(i); 
-    val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin    
+    sprintf(addr, "/114/digital/%d", i);
+    val = random(100);
+    //val = digitalRead(i); 
+    //val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin    
     bndl_out.add(addr).add(val);
   }
   for (int i = 0; i < NUM_ANALOG_PINS; i++) {
-    sprintf(addr, "/analog/%d", i);
-    val = analogRead(i);
-    val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
+    sprintf(addr, "/114/analog/%d", i);
+    val = random(100);
+    //val = analogRead(i);
+    //val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
     bndl_out.add(addr).add(val);
   }
   if (Udp.beginPacket(dest_ip, dest_port) == 0) {
