@@ -87,6 +87,7 @@ void setup() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(WiFi.localIP());
+
 }
 
 
@@ -96,9 +97,16 @@ void calibrate(OSCMessage &msg) {
 
   // Calibrate all digital pins
   if (calibration) {
+    lcd.setCursor(0,1);
+    lcd.print("Calibrating");
+    
     calibration_end_time = millis() + CALIBRATION_TIME;
     for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
       digital_initial_state[i] = digitalRead(i);
+    }
+    for (int i = 0; i < NUM_ANALOG_PINS; i++) {
+      analog_min[i] = PIN_MAX_VALUE;
+      analog_max[i] = 0;
     }
   }
   
@@ -111,6 +119,9 @@ void loop() {
   
   if (calibration) {
     if (curr_time < calibration_end_time) {
+      lcd.setCursor(12,1);
+      int time_left = (int)((calibration_end_time - curr_time) / 1000);
+      lcd.print(time_left);
       for (int i = 0; i < NUM_ANALOG_PINS; i++) {
         int val = analogRead(i);
         analog_min[i] = min(val, analog_min[i]);
@@ -119,13 +130,16 @@ void loop() {
     } else {
       //Calibration is over
       calibration = false;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(WiFi.localIP());m
     }
   }
 
   
   OSCBundle bndl_out;
   OSCBundle bndl_in;
-  char addr[12];
+  char addr[16];
   int bndl_in_size;
 
   if ((bndl_in_size = Udp.parsePacket()) > 0) {
@@ -138,15 +152,16 @@ void loop() {
   }
   
   int val;
+  int last_octet = WiFi.localIP()[3];
   for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
-    sprintf(addr, "/114/digital/%d", i);
+    sprintf(addr, "/%d/digital/%d", last_octet, i);
     val = random(100);
     //val = digitalRead(i); 
     //val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin    
     bndl_out.add(addr).add(val);
   }
   for (int i = 0; i < NUM_ANALOG_PINS; i++) {
-    sprintf(addr, "/114/analog/%d", i);
+    sprintf(addr, "/%d/analog/%d", last_octet, i);
     val = random(100);
     //val = analogRead(i);
     //val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
