@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 561.0, 97.0, 640.0, 480.0 ],
+		"rect" : [ 100.0, 97.0, 640.0, 480.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -40,12 +40,49 @@
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-12",
+					"linecount" : 2,
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 12.0, 50.0, 277.0, 33.0 ],
+					"text" : "receives OSC messages from the stompbox over UDP port 7000"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-8",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 502.0, 455.0, 150.0, 20.0 ],
+					"text" : "Luke Dzwonczyk 2020"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontface" : 3,
+					"fontname" : "Arial",
+					"fontsize" : 16.0,
+					"id" : "obj-4",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 12.0, 13.0, 168.0, 24.0 ],
+					"text" : "cnmat.o.stompbox2"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-13",
 					"linecount" : 4,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 283.0, 302.0, 242.0, 60.0 ],
+					"patching_rect" : [ 260.0, 302.0, 242.0, 60.0 ],
 					"text" : "output:\nvalues received from stompbox. an example message is: \n/analog/4 or /digital/10"
 				}
 
@@ -71,7 +108,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 187.0, 125.0, 150.0, 33.0 ],
+					"patching_rect" : [ 204.0, 139.0, 150.0, 33.0 ],
 					"text" : "input 2: bang to start calibration"
 				}
 
@@ -83,7 +120,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 12.0, 125.0, 151.0, 47.0 ],
+					"patching_rect" : [ 8.0, 125.0, 151.0, 47.0 ],
 					"text" : "input 1: The IP of the stompbox, which is shown on the stompbox's display"
 				}
 
@@ -119,8 +156,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 83.0, 246.0, 74.0, 22.0 ],
-					"text" : "stompbox_2"
+					"patching_rect" : [ 83.0, 246.0, 113.0, 22.0 ],
+					"text" : "cnmat.o.stompbox2"
 				}
 
 			}
@@ -148,7 +185,7 @@
 			}
  ],
 		"dependency_cache" : [ 			{
-				"name" : "stompbox_2.maxpat",
+				"name" : "cnmat.o.stompbox2.maxpat",
 				"bootpath" : "~/Desktop/Academics/Cal Year 4/Music 201A/stompbox/repo",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
