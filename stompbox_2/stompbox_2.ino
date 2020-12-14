@@ -47,10 +47,6 @@ unsigned int dest_port = 1751;
 void setup() {
   Serial.begin(115200);
   
-  WiFi.onEvent(WiFiEvent);
-  ETH.begin();
-  Udp.begin(local_port);
-  
   // initialize LCD
   lcd.init();
   // turn on LCD backlight
@@ -58,18 +54,23 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("Stompbox 2.0");
  
-  // TODO: Display IP address
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Connect");
   lcd.setCursor(1,0);
   lcd.print("Ethernet");
 
+  WiFi.onEvent(WiFiEvent);
+  ETH.begin();
+  Udp.begin(local_port);
+
   //initialize OSC address arrays
   for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
+    // TODO: initialize digital pins
     sprintf(osc_addrs_digital[i], "/digital/%d", i);
   }
   for (int i = 0; i < NUM_ANALOG_PINS; i++) {
+    // TODO: initialize analog pins
     sprintf(osc_addrs_analog[i], "/analog/%d", i);
   }
 }
@@ -172,6 +173,17 @@ void update_calibration() {
     }
 }
 
+/* Display the given IP on the I2C display 
+You can index an IPAdress like an array
+example: access the first octet of 'ip' via ip[0] */
+void display_ip(IPAddress ip) {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("IP:");
+  lcd.setCursor(1,0);
+  lcd.print(ip);
+}
+
 bool eth_connected = false;
 
 void WiFiEvent(WiFiEvent_t event)
@@ -190,6 +202,7 @@ void WiFiEvent(WiFiEvent_t event)
       Serial.print(ETH.macAddress());
       Serial.print(", IPv4: ");
       Serial.print(ETH.localIP());
+      display_ip(ETH.localIP());
       if (ETH.fullDuplex()) {
         Serial.print(", FULL_DUPLEX");
       }
