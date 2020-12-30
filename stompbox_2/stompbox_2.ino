@@ -9,29 +9,28 @@
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
-#define NUM_DIGITAL_PINS 12
-#define NUM_ANALOG_PINS 12
 #define PIN_MAX_VALUE 4095
-#define CALIBRATION_TIME 10000 //in ms
 
-// this should be removed before release
-int POT_PIN = 35;
+// pin lists
+const int digital_pins[] = {};
+const int analog_pins[] = {};
+const int num_digital_pins = sizeof(digital_pins) / sizeof(int);
+const int num_analog_pins = sizeof(analog_pins) / sizeof(int);
 
 // calibration vars
 bool calibration = false;
-int digital_initial_state[NUM_DIGITAL_PINS];
-int analog_max[NUM_ANALOG_PINS];
-int analog_min[NUM_ANALOG_PINS];
+int digital_initial_state[num_digital_pins];
+int analog_max[num_analog_pins];
+int analog_min[num_analog_pins];
+const int calibration_time = 10000;  //in ms
 unsigned long calibration_end_time = -1;
 
 // the OSC addresses that will be used
-char osc_addrs_digital[NUM_DIGITAL_PINS][16];
-char osc_addrs_analog[NUM_ANALOG_PINS][16];
+char osc_addrs_digital[num_digital_pins][16];
+char osc_addrs_analog[num_analog_pins][16];
 
-// set the LCD number of columns and rows
 int lcdColumns = 16;
 int lcdRows = 2;
-
 // set LCD address, number of columns and rows
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
 
@@ -64,14 +63,15 @@ void setup() {
   ETH.begin();
   Udp.begin(local_port);
 
-  //initialize OSC address arrays
-  for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
-    // TODO: initialize digital pins
+  //initialize OSC address arrays and calibration arrays
+  for (int i = 0; i < num_digital_pins; i++) {
     sprintf(osc_addrs_digital[i], "/digital/%d", i);
+    digital_initial_state[i] = 0;  // this gets updated during calibration
   }
-  for (int i = 0; i < NUM_ANALOG_PINS; i++) {
-    // TODO: initialize analog pins
+  for (int i = 0; i < num_analog_pins; i++) {
     sprintf(osc_addrs_analog[i], "/analog/%d", i);
+    analog_max[i] = PIN_MAX_VALUE;  // this gets updated during calibration
+    analog_min[i] = 0;
   }
 }
 
@@ -85,6 +85,13 @@ void loop() {
   int packetSize = Udp.parsePacket(); // Get the current team header packet length
   if (packetSize)                     // If data is available
   {
+    OSCBundle bundle_in;
+    while (packetSize--) {
+      bundle_in.fill(Udp.read());
+    }
+    if (!bundle_in.hasError()) {
+        bundle_in.dispatch("/calibrate", calibrate);
+    }
     dest_ip = Udp.remoteIP();
     char buf[packetSize];
     Udp.read(buf, packetSize); // Read the current packet data
@@ -99,21 +106,22 @@ void loop() {
 
   // Read pins
   OSCBundle bundle;
+  int pin;
   int val;
-  for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
-    val = random(100);
-//    val = digitalRead(i); 
-//    val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
+  for (int i = 0; i < num_digital_pins; i++) {
+    pin = digital_pins[i];
+    val = digitalRead(pin); 
+    val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
     if (debug) {
       Serial.println(osc_addrs_digital[i]);
       Serial.println(val);
     }
     bundle.add(osc_addrs_digital[i]).add(val);
   }
-  for (int i = 0; i < NUM_ANALOG_PINS; i++) {
-    val = random(100);
-//    val = analogRead(i);
-//    val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
+  for (int i = 0; i < num_analog_pins; i++) {
+    pin = analog_pins[i];
+    val = analogRead(pin);
+    val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
     if (debug) {
       Serial.println(osc_addrs_analog[i]);
       Serial.println(val);
@@ -135,6 +143,8 @@ void loop() {
 
 /* Expect OSC message to addr /calibrate to be a 0 or 1 */
 void calibrate(OSCMessage &msg) {
+  Serial.print("CALIBRATE!, value: ");
+  Serial.println(msg.getInt(0));
   calibration = msg.getInt(0);
 
   // Calibrate all digital pins
@@ -142,11 +152,11 @@ void calibrate(OSCMessage &msg) {
     lcd.setCursor(0,1);
     lcd.print("Calibrating");
     
-    calibration_end_time = millis() + CALIBRATION_TIME;
-    for (int i = 0; i < NUM_DIGITAL_PINS; i++) {
+    calibration_end_time = millis() + calibration_time;
+    for (int i = 0; i < num_digital_pins; i++) {
       digital_initial_state[i] = digitalRead(i);
     }
-    for (int i = 0; i < NUM_ANALOG_PINS; i++) {
+    for (int i = 0; i < num_analog_pins; i++) {
       analog_min[i] = PIN_MAX_VALUE;
       analog_max[i] = 0;
     }
@@ -159,7 +169,7 @@ void update_calibration() {
       lcd.setCursor(12,1);
       int time_left = (int)((calibration_end_time - curr_time) / 1000);
       lcd.print(time_left);
-      for (int i = 0; i < NUM_ANALOG_PINS; i++) {
+      for (int i = 0; i < num_analog_pins; i++) {
         int val = analogRead(i);
         analog_min[i] = min(val, analog_min[i]);
         analog_max[i] = max(val, analog_max[i]);
