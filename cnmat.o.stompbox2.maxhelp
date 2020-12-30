@@ -46,7 +46,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 12.0, 50.0, 277.0, 33.0 ],
-					"text" : "receives OSC messages from the stompbox over UDP port 7000"
+					"text" : "receives OSC messages from the stompbox over UDP ports 1750 and 1751"
 				}
 
 			}
@@ -83,7 +83,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 260.0, 302.0, 242.0, 60.0 ],
-					"text" : "output:\nvalues received from stompbox. an example message is: \n/analog/4 or /digital/10"
+					"text" : "output:\nvalues received from stompbox. an example address is: \n/analog/4 or /digital/10"
 				}
 
 			}
@@ -192,26 +192,11 @@
 				"implicit" : 1
 			}
 , 			{
-				"name" : "o.accum.maxpat",
-				"bootpath" : "~/Documents/Max 8/Packages/Music-and-Computing/patchers/gatherers",
-				"patcherrelativepath" : "../../../../../../Documents/Max 8/Packages/Music-and-Computing/patchers/gatherers",
-				"type" : "JSON",
-				"implicit" : 1
-			}
-, 			{
 				"name" : "o.pack.mxo",
 				"type" : "iLaX"
 			}
 , 			{
 				"name" : "o.route.mxo",
-				"type" : "iLaX"
-			}
-, 			{
-				"name" : "o.select.mxo",
-				"type" : "iLaX"
-			}
-, 			{
-				"name" : "o.union.mxo",
 				"type" : "iLaX"
 			}
 , 			{
