@@ -34,14 +34,14 @@ int lcdRows = 2;
 // set LCD address, number of columns and rows
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
 
-// debugging and latency
-boolean debug = false;
-
-
 WiFiUDP Udp;  //Create UDP object
 unsigned int local_port = 1750;
 IPAddress dest_ip;
 unsigned int dest_port = 1751;
+
+// debugging and latency
+// remove before release
+boolean debug = false;
 
 void setup() {
   Serial.begin(115200);
@@ -50,14 +50,7 @@ void setup() {
   lcd.init();
   // turn on LCD backlight
   lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Stompbox 2.0");
- 
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Connect");
-  lcd.setCursor(1,0);
-  lcd.print("Ethernet");
+  display_text("Stompbox 2.0", "");
 
   WiFi.onEvent(WiFiEvent);
   ETH.begin();
@@ -67,11 +60,15 @@ void setup() {
   for (int i = 0; i < num_digital_pins; i++) {
     sprintf(osc_addrs_digital[i], "/digital/%d", i);
     digital_initial_state[i] = 0;  // this gets updated during calibration
+    pinMode(digital_pins[i], INPUT);
   }
   for (int i = 0; i < num_analog_pins; i++) {
     sprintf(osc_addrs_analog[i], "/analog/%d", i);
-    analog_max[i] = PIN_MAX_VALUE;  // this gets updated during calibration
+    // since there's no calibration yet, assume that the 
+    // analog pedals will output the range 0 to PIN_MAX_VALUE
+    analog_max[i] = PIN_MAX_VALUE;
     analog_min[i] = 0;
+    pinMode(analog_pins[i], INPUT);
   }
 }
 
@@ -82,9 +79,9 @@ void loop() {
     update_calibration();
   }
 
-  int packetSize = Udp.parsePacket(); // Get the current team header packet length
-  if (packetSize)                     // If data is available
-  {
+  int packetSize = Udp.parsePacket(); // Get the current header packet length
+  if (packetSize) {                   // If data is available
+    dest_ip = Udp.remoteIP();
     OSCBundle bundle_in;
     while (packetSize--) {
       bundle_in.fill(Udp.read());
@@ -92,16 +89,18 @@ void loop() {
     if (!bundle_in.hasError()) {
         bundle_in.dispatch("/calibrate", calibrate);
     }
-    dest_ip = Udp.remoteIP();
-    char buf[packetSize];
-    Udp.read(buf, packetSize); // Read the current packet data
-    Serial.println();
-    Serial.print("Received: ");
-    Serial.println(buf);
-    Serial.print("From IP: ");
-    Serial.println(Udp.remoteIP());
-    Serial.print("From Port: ");
-    Serial.println(Udp.remotePort());
+    
+    if (debug) {
+      char buf[packetSize];
+      Udp.read(buf, packetSize); // Read the current packet data
+      Serial.println();
+      Serial.print("Received: ");
+      Serial.println(buf);
+      Serial.print("From IP: ");
+      Serial.println(Udp.remoteIP());
+      Serial.print("From Port: ");
+      Serial.println(Udp.remotePort());
+    } 
   }
 
   // Read pins
@@ -113,7 +112,8 @@ void loop() {
     val = digitalRead(pin); 
     val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
     if (debug) {
-      Serial.println(osc_addrs_digital[i]);
+      Serial.print(osc_addrs_digital[i]);
+      Serial.print(": ");
       Serial.println(val);
     }
     bundle.add(osc_addrs_digital[i]).add(val);
@@ -123,7 +123,8 @@ void loop() {
     val = analogRead(pin);
     val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
     if (debug) {
-      Serial.println(osc_addrs_analog[i]);
+      Serial.print(osc_addrs_analog[i]);
+      Serial.print(": ");
       Serial.println(val);
     }
     bundle.add(osc_addrs_analog[i]).add(val);
@@ -143,16 +144,13 @@ void loop() {
 
 /* Expect OSC message to addr /calibrate to be a 0 or 1 */
 void calibrate(OSCMessage &msg) {
-  Serial.print("CALIBRATE!, value: ");
-  Serial.println(msg.getInt(0));
   calibration = msg.getInt(0);
-
-  // Calibrate all digital pins
   if (calibration) {
     lcd.setCursor(0,1);
     lcd.print("Calibrating");
     
     calibration_end_time = millis() + calibration_time;
+    // Calibrate all digital pins
     for (int i = 0; i < num_digital_pins; i++) {
       digital_initial_state[i] = digitalRead(i);
     }
@@ -189,10 +187,19 @@ example: access the first octet of 'ip' via ip[0] */
 void display_ip(IPAddress ip) {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("IP:");
-  lcd.setCursor(1,0);
+  lcd.print("Stompbox IP:");
+  lcd.setCursor(0,1);
   lcd.print(ip);
 }
+
+void display_text(String line1, String line2) {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(line1);
+  lcd.setCursor(0,1);
+  lcd.print(line2);
+}
+
 
 bool eth_connected = false;
 
@@ -203,9 +210,11 @@ void WiFiEvent(WiFiEvent_t event)
       Serial.println("ETH Started");
       //set eth hostname here
       ETH.setHostname("esp32-ethernet");
+      display_text("Connect", "Ethernet");
       break;
     case SYSTEM_EVENT_ETH_CONNECTED:
       Serial.println("ETH Connected");
+      display_text("Connecting...", "");
       break;
     case SYSTEM_EVENT_ETH_GOT_IP:
       Serial.print("ETH MAC: ");
@@ -220,10 +229,12 @@ void WiFiEvent(WiFiEvent_t event)
       Serial.print(ETH.linkSpeed());
       Serial.println("Mbps");
       eth_connected = true;
+      display_ip(ETH.localIP());
       break;
     case SYSTEM_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
       eth_connected = false;
+      display_text("Connect", "Ethernet");
       break;
     case SYSTEM_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
