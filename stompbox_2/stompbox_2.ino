@@ -12,10 +12,11 @@
 #define PIN_MAX_VALUE 4095
 
 // pin lists
-const int digital_pins[] = {};
-const int analog_pins[] = {};
+const int digital_pins[] = {3, 5};
+const int analog_pins[] = {0, 2, 4, 39, 36, 35, 33, 32, 15, 14};
 const int num_digital_pins = sizeof(digital_pins) / sizeof(int);
 const int num_analog_pins = sizeof(analog_pins) / sizeof(int);
+const int button_pin = 34;
 
 // calibration vars
 bool calibration = false;
@@ -28,13 +29,15 @@ unsigned long calibration_end_time = -1;
 // the OSC addresses that will be used
 char osc_addrs_digital[num_digital_pins][16];
 char osc_addrs_analog[num_analog_pins][16];
+char osc_addr_button[8] = "/button";
 
+// display vars
 int lcdColumns = 16;
 int lcdRows = 2;
-// set LCD address, number of columns and rows
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
 
-WiFiUDP Udp;  //Create UDP object
+// networking vars
+WiFiUDP Udp;
 unsigned int local_port = 1750;
 IPAddress dest_ip;
 unsigned int dest_port = 1751;
@@ -70,15 +73,12 @@ void setup() {
     analog_min[i] = 0;
     pinMode(analog_pins[i], INPUT);
   }
+  pinMode(button_pin, INPUT);
 }
 
 
-void loop() {  
-  // CALIBRATION 
-  if (calibration) {
-    update_calibration();
-  }
-
+void loop() {
+  // Receive data from Max
   int packetSize = Udp.parsePacket(); // Get the current header packet length
   if (packetSize) {                   // If data is available
     dest_ip = Udp.remoteIP();
@@ -90,7 +90,6 @@ void loop() {
         bundle_in.dispatch("/calibrate", calibrate);
         bundle_in.dispatch("/backlight", control_backlight);
     }
-    
     if (debug) {
       char buf[packetSize];
       Udp.read(buf, packetSize); // Read the current packet data
@@ -104,17 +103,28 @@ void loop() {
     } 
   }
 
+  // Calibrate
+  if (calibration) {
+    update_calibration();
+  }
+  
   // Read pins
   OSCBundle bundle;
   int pin;
   int val;
   for (int i = 0; i < num_digital_pins; i++) {
     pin = digital_pins[i];
-    val = digitalRead(pin); 
-    val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
+    val = digitalRead(pin);
+    if (!calibration) {
+      val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
+    }
     if (debug) {
-      Serial.print(osc_addrs_digital[i]);
-      Serial.print(": ");
+      Serial.print(pin);
+      Serial.print(": Read: ");
+      Serial.print(digitalRead(pin));
+      Serial.print(" Init state: ");
+      Serial.print(digital_initial_state[i]);
+      Serial.print(" Final val: ");
       Serial.println(val);
     }
     bundle.add(osc_addrs_digital[i]).add(val);
@@ -122,14 +132,26 @@ void loop() {
   for (int i = 0; i < num_analog_pins; i++) {
     pin = analog_pins[i];
     val = analogRead(pin);
-    val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
+    if (!calibration) {
+      val = map(val, analog_min[i], analog_max[i], 0, PIN_MAX_VALUE); //Map the reading based on calibration
+    }
     if (debug) {
+      Serial.print("Addr: ");
       Serial.print(osc_addrs_analog[i]);
-      Serial.print(": ");
+      Serial.print(" Pin: ");
+      Serial.print(pin);
+      Serial.print(" Read: ");
+      Serial.print(analogRead(pin));
+      Serial.print(" Min: ");
+      Serial.print(digital_initial_state[i]);
+      Serial.print(" Final val: ");
       Serial.println(val);
     }
     bundle.add(osc_addrs_analog[i]).add(val);
   }
+  
+  // read button
+  bundle.add(osc_addr_button).add(analogRead(button_pin));
 
   // Send values to Max
   Udp.beginPacket(dest_ip, dest_port);
@@ -143,13 +165,23 @@ void loop() {
 }
 
 
-/* Expect OSC message to addr /calibrate to be a 0 or 1 */
+/* Expect OSC message to addr /backlight to be a 0 or 1 */
+void control_backlight(OSCMessage &msg) {
+  int val = msg.getInt(0);
+  if (val) {
+    lcd.backlight();
+  } else {
+    lcd.noBacklight();
+  }
+}
+
+
+/* Called at the beginning of the calibration phase
+Expect OSC message to addr /calibrate to be a 0 or 1 */
 void calibrate(OSCMessage &msg) {
   calibration = msg.getInt(0);
   if (calibration) {
-    lcd.setCursor(0,1);
-    lcd.print("Calibrating");
-    
+    display_text("Calibrating", "");
     calibration_end_time = millis() + calibration_time;
     // Calibrate all digital pins
     for (int i = 0; i < num_digital_pins; i++) {
@@ -162,19 +194,12 @@ void calibrate(OSCMessage &msg) {
   }
 }
 
-void control_backlight(OSCMessage &msg) {
-  int val = msg.getInt(0);
-  if (val) {
-    lcd.backlight();
-  } else {
-    lcd.noBacklight();
-  }
-}
 
+/* Called every loop during calibration phase */
 void update_calibration() {
   unsigned long curr_time = millis();
   if (curr_time < calibration_end_time) {
-      lcd.setCursor(12,1);
+      lcd.setCursor(12,0);
       int time_left = (int)((calibration_end_time - curr_time) / 1000);
       lcd.print(time_left);
       for (int i = 0; i < num_analog_pins; i++) {
@@ -185,23 +210,23 @@ void update_calibration() {
     } else {
       //Calibration is over
       calibration = false;
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print(WiFi.localIP());
+      display_ip();
     }
 }
 
-/* Display the given IP on the I2C display 
+/* Display the current IP on the I2C display 
 You can index an IPAdress like an array
 example: access the first octet of 'ip' via ip[0] */
-void display_ip(IPAddress ip) {
+void display_ip() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Stompbox IP:");
   lcd.setCursor(0,1);
-  lcd.print(ip);
+  lcd.print(ETH.localIP());
 }
 
+
+/* Clear the display and show the given arguments */
 void display_text(String line1, String line2) {
   lcd.clear();
   lcd.setCursor(0,0);
@@ -210,8 +235,6 @@ void display_text(String line1, String line2) {
   lcd.print(line2);
 }
 
-
-bool eth_connected = false;
 
 void WiFiEvent(WiFiEvent_t event)
 {
@@ -231,24 +254,20 @@ void WiFiEvent(WiFiEvent_t event)
       Serial.print(ETH.macAddress());
       Serial.print(", IPv4: ");
       Serial.print(ETH.localIP());
-      display_ip(ETH.localIP());
       if (ETH.fullDuplex()) {
         Serial.print(", FULL_DUPLEX");
       }
       Serial.print(", ");
       Serial.print(ETH.linkSpeed());
       Serial.println("Mbps");
-      eth_connected = true;
-      display_ip(ETH.localIP());
+      display_ip();
       break;
     case SYSTEM_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
-      eth_connected = false;
       display_text("Connect", "Ethernet");
       break;
     case SYSTEM_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
-      eth_connected = false;
       break;
     default:
       break;
