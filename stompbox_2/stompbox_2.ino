@@ -88,6 +88,7 @@ void loop() {
     }
     if (!bundle_in.hasError()) {
         bundle_in.dispatch("/calibrate", calibrate);
+        bundle_in.dispatch("/backlight", control_backlight);
     }
     
     if (debug) {
@@ -158,6 +159,15 @@ void calibrate(OSCMessage &msg) {
       analog_min[i] = PIN_MAX_VALUE;
       analog_max[i] = 0;
     }
+  }
+}
+
+void control_backlight(OSCMessage &msg) {
+  int val = msg.getInt(0);
+  if (val) {
+    lcd.backlight();
+  } else {
+    lcd.noBacklight();
   }
 }
 
