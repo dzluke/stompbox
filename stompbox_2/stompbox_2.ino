@@ -1,11 +1,17 @@
+//Code designed for the Olimex ESP32-POE-ISO variant.
+//Code by Luke Dzwonczyk, Jeremy Wagner & Olimex
+
 
 #include <Arduino.h>
 #include <ETH.h>
-#include <WiFiUdp.h> 
-#include <SPI.h>   
+#include <Ethernet.h>
+#include <EthernetUdp.h>
+#include <WiFiUdp.h>
+#include <SPI.h>
 #include <OSCBundle.h>
 #include <OSCBoards.h>
 #include <LiquidCrystal_I2C.h>
+#include <Adafruit_VL53L0X.h>
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER 12
@@ -32,9 +38,12 @@ char osc_addrs_analog[num_analog_pins][16];
 char osc_addr_button[8] = "/button";
 
 // display vars
-int lcdColumns = 16;
-int lcdRows = 2;
+int lcdColumns = 20;
+int lcdRows = 4;
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
+
+//VL53L0 var for distance sensor (functionality commented out below in 2 places)
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
 // networking vars
 WiFiUDP Udp;
@@ -48,7 +57,7 @@ boolean debug = false;
 
 void setup() {
   Serial.begin(115200);
-  
+
   // initialize LCD
   lcd.init();
   // turn on LCD backlight
@@ -59,6 +68,7 @@ void setup() {
   ETH.begin();
   Udp.begin(local_port);
 
+
   //initialize OSC address arrays and calibration arrays
   for (int i = 0; i < num_digital_pins; i++) {
     sprintf(osc_addrs_digital[i], "/digital/%d", i);
@@ -67,13 +77,21 @@ void setup() {
   }
   for (int i = 0; i < num_analog_pins; i++) {
     sprintf(osc_addrs_analog[i], "/analog/%d", i);
-    // since there's no calibration yet, assume that the 
+    // since there's no calibration yet, assume that the
     // analog pedals will output the range 0 to PIN_MAX_VALUE
     analog_max[i] = PIN_MAX_VALUE;
     analog_min[i] = 0;
     pinMode(analog_pins[i], INPUT);
   }
   pinMode(button_pin, INPUT);
+  
+  /* currently causing display issues
+  Serial.println("Adafruit VL53L0X test");
+  if (!lox.begin()) {
+    Serial.println(F("Failed to boot VL53L0X"));
+    while (1);
+  }
+  */
 }
 
 
@@ -87,8 +105,10 @@ void loop() {
       bundle_in.fill(Udp.read());
     }
     if (!bundle_in.hasError()) {
-        bundle_in.dispatch("/calibrate", calibrate);
-        bundle_in.dispatch("/backlight", control_backlight);
+      bundle_in.dispatch("/calibrate", calibrate);
+      bundle_in.dispatch("/backlight", control_backlight);
+      bundle_in.dispatch("/display", cue_display);
+      bundle_in.dispatch("/identify", identify);
     }
     if (debug) {
       char buf[packetSize];
@@ -100,14 +120,14 @@ void loop() {
       Serial.println(Udp.remoteIP());
       Serial.print("From Port: ");
       Serial.println(Udp.remotePort());
-    } 
+    }
   }
 
   // Calibrate
   if (calibration) {
     update_calibration();
   }
-  
+
   // Read pins
   OSCBundle bundle;
   int pin;
@@ -116,7 +136,7 @@ void loop() {
     pin = digital_pins[i];
     val = digitalRead(pin);
     if (!calibration) {
-      val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin  
+      val = val ^ digital_initial_state[i]; //XOR the reading with the initial reading of the pin
     }
     if (debug) {
       Serial.print(pin);
@@ -149,9 +169,21 @@ void loop() {
     }
     bundle.add(osc_addrs_analog[i]).add(val);
   }
-  
+
   // read button
   bundle.add(osc_addr_button).add(analogRead(button_pin));
+
+  //read VL53L0
+  /*/Currently causing display problems
+  VL53L0X_RangingMeasurementData_t measure;
+  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
+    bundle.add("/VL53L0").add(measure.RangeMilliMeter);
+  } else {
+    bundle.add("/VL53L0").add(-1);
+  }
+  */
+  
 
   // Send values to Max
   Udp.beginPacket(dest_ip, dest_port);
@@ -159,9 +191,13 @@ void loop() {
   Udp.endPacket();
   bundle.empty();
 
+  
+
   if (debug) {
     delay(2000);
   }
+
+  
 }
 
 
@@ -177,7 +213,7 @@ void control_backlight(OSCMessage &msg) {
 
 
 /* Called at the beginning of the calibration phase
-Expect OSC message to addr /calibrate to be a 0 or 1 */
+  Expect OSC message to addr /calibrate to be a 0 or 1 */
 void calibrate(OSCMessage &msg) {
   calibration = msg.getInt(0);
   if (calibration) {
@@ -199,55 +235,116 @@ void calibrate(OSCMessage &msg) {
 void update_calibration() {
   unsigned long curr_time = millis();
   if (curr_time < calibration_end_time) {
-      lcd.setCursor(12,0);
-      int time_left = (int)((calibration_end_time - curr_time) / 1000);
-      lcd.print(time_left);
-      for (int i = 0; i < num_analog_pins; i++) {
-        int val = analogRead(i);
-        analog_min[i] = min(val, analog_min[i]);
-        analog_max[i] = max(val, analog_max[i]);
-      }
-    } else {
-      //Calibration is over
-      calibration = false;
-      display_ip();
+    lcd.setCursor(12, 0);
+    int time_left = (int)((calibration_end_time - curr_time) / 1000);
+    lcd.print(time_left);
+    for (int i = 0; i < num_analog_pins; i++) {
+      int val = analogRead(i);
+      analog_min[i] = min(val, analog_min[i]);
+      analog_max[i] = max(val, analog_max[i]);
     }
+  } else {
+    //Calibration is over
+    calibration = false;
+    display_ip();
+  }
 }
 
-/* Display the current IP on the I2C display 
-You can index an IPAdress like an array
-example: access the first octet of 'ip' via ip[0] */
+//method to find breaks for text wrapping on display
+int findBreaks(String thing, int l){
+  for(int i=l-1; i>0;i--){
+    Serial.println(thing.charAt(i));
+    if(thing.charAt(i)==' '){
+      return i;
+    }
+  }
+  return l;
+}
+
+/* Display the current IP on the I2C display
+  You can index an IPAdress like an array
+  example: access the first octet of 'ip' via ip[0] */
 void display_ip() {
   lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Stompbox IP:");
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 0);
+  lcd.print("Stompbox IP : Port");
+  lcd.setCursor(0, 1);
   lcd.print(ETH.localIP());
+  lcd.print(" : ");
+  lcd.print(local_port);
+}
+
+void identify(OSCMessage &msg){
+  display_ip();
 }
 
 
 /* Clear the display and show the given arguments */
 void display_text(String line1, String line2) {
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print(line1);
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.print(line2);
 }
 
+void cue_display(OSCMessage &msg){
+  lcd.clear();
+  char text[96];
+  int a = msg.getString(0,text,96);
+  String t = String(text);
+  if (t.length() > 80) {
+    lcd.setCursor(0, 0);
+    lcd.print("Error:");
+    lcd.setCursor(0,2);
+    lcd.print("Message too long");
+  } else {
+    
+    int last = findBreaks(t,20)+1;
+    int offset=(20-last) / 2;
+    lcd.setCursor(offset, 0);
+    lcd.print(t.substring(0, last));
+    t.remove(0, last);
+    
+    last = findBreaks(t,20)+1;
+    offset = (20-last) / 2;
+    lcd.setCursor(offset, 1);
+    lcd.print(t.substring(0, last));
+    t.remove(0, last);
+
+    last=findBreaks(t, 20)+1;
+    offset = (20-last) / 2;
+    lcd.setCursor(offset, 2);
+    lcd.print(t.substring(0, last));
+    t.remove(0, last);
+
+    last=findBreaks(t, 20)+1;
+    offset = (20-last) / 2;
+    lcd.setCursor(offset, 3);
+    lcd.print(t.substring(0, last));
+
+
+  }
+}
+
+void configure_port(String addr, String val) {
+
+}
+
+static bool eth_connected = false;
 
 void WiFiEvent(WiFiEvent_t event)
 {
   switch (event) {
     case SYSTEM_EVENT_ETH_START:
       Serial.println("ETH Started");
+      display_text("Ethernet Starting", "Standby..");
       //set eth hostname here
-      ETH.setHostname("esp32-ethernet");
-      display_text("Connect", "Ethernet");
+      ETH.setHostname("Stompbox_001");
       break;
     case SYSTEM_EVENT_ETH_CONNECTED:
       Serial.println("ETH Connected");
-      display_text("Connecting...", "");
+      display_text("Ethernet Connected", "...Resolving IP...");
       break;
     case SYSTEM_EVENT_ETH_GOT_IP:
       Serial.print("ETH MAC: ");
@@ -260,14 +357,18 @@ void WiFiEvent(WiFiEvent_t event)
       Serial.print(", ");
       Serial.print(ETH.linkSpeed());
       Serial.println("Mbps");
+      eth_connected = true;
       display_ip();
       break;
     case SYSTEM_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
-      display_text("Connect", "Ethernet");
+      display_text( "**Connection Lost**",
+                    " ***Check Cable*** ");
+      eth_connected = false;
       break;
     case SYSTEM_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
+      eth_connected = false;
       break;
     default:
       break;
