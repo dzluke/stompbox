@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2021-03-03T04:37:22Z",
+        "GenerationSoftware": {
+            "Application": "EAGLE",
+            "Vendor": "Autodesk",
+            "Version": "9.7.0"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.57,
+        "LayerNumber": 2,
+        "Name": {
+            "ProjectId": "STOMPBOX_2.0 v14"
+        },
+        "Owner": "Jeremy Wagner <jeremy.wagner@berkeley.edu>",
+        "Size": {
+            "X": 65.4104,
+            "Y": 140.64
+        }
+    }
+}
