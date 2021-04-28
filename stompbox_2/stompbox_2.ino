@@ -51,6 +51,10 @@ unsigned int local_port = 1750;
 IPAddress dest_ip;
 unsigned int dest_port = 1751;
 
+// ip reporting vars
+bool send_ip = false;
+bool report_ip = false;
+
 // debugging and latency
 // remove before release
 boolean debug = false;
@@ -62,7 +66,7 @@ void setup() {
   Serial.println("Adafruit VL53L0X test");
   if (!lox.begin()) {
     Serial.println(F("Failed to boot VL53L0X"));
-    while (1);
+    //while (1);
   }
 
   //the Adafruit_VL53L0X begin method can interfere with the LCD display unless we manually set the address
@@ -114,6 +118,8 @@ void loop() {
       bundle_in.dispatch("/backlight", control_backlight);
       bundle_in.dispatch("/display", cue_display);
       bundle_in.dispatch("/identify", identify);
+      bundle_in.dispatch("/getIP", set_send_ip);
+      bundle_in.dispatch("/reportIP", set_report_ip);
     }
     if (debug) {
       char buf[packetSize];
@@ -188,7 +194,11 @@ void loop() {
     bundle.add("/VL53L0").add(-1);
   }
   
-  
+  if (send_ip || report_ip) {
+    bundle.add("/ip").add(ETH.localIP().toString().c_str());
+    bundle.add("/port").add(local_port);
+    send_ip = false;
+  }
 
   // Send values to Max
   Udp.beginPacket(dest_ip, dest_port);
@@ -196,7 +206,6 @@ void loop() {
   Udp.endPacket();
   bundle.empty();
 
-  
 
   if (debug) {
     delay(2000);
@@ -334,6 +343,14 @@ void cue_display(OSCMessage &msg){
 
 void configure_port(String addr, String val) {
 
+}
+
+void set_send_ip(OSCMessage &msg) {
+  send_ip = true;
+}
+
+void set_report_ip(OSCMessage &msg) {
+  report_ip = msg.getInt(0);
 }
 
 static bool eth_connected = false;
