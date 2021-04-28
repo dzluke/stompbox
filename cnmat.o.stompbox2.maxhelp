@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 8,
 			"minor" : 1,
-			"revision" : 5,
+			"revision" : 11,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -45,8 +45,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 377.0, 79.0, 418.0, 74.0 ],
-					"presentation_linecount" : 11,
+					"patching_rect" : [ 267.0, 274.5, 419.0, 74.0 ],
 					"text" : "notes on calibration phase:\n\nAt the beginning of calibration, all momentary on/off pedals should be in their off state. Calibration mode lasts 10 seconds, during which all expression pedals should be put through their full range of motion."
 				}
 
@@ -56,13 +55,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-10",
-					"linecount" : 4,
+					"linecount" : 9,
 					"maxclass" : "o.expr.codebox",
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
-					"patching_rect" : [ 204.0, 156.5, 397.0, 73.0 ],
-					"text" : "/calibrate = 1, # begin calibration\n/calibrate = 0, # end calibration early\n/backlight = 1, # turn display backlight on (default)\n/backlight = 0  # turn display backlight off",
+					"patching_rect" : [ 336.0, 102.5, 455.0, 154.0 ],
+					"text" : "/calibrate = 1, # begin calibration\n/calibrate = 0, # end calibration early\n/backlight = 1, # turn display backlight on (default)\n/backlight = 0, # turn display backlight off\n/display = \"Hello world\", # display a given message\n/identify = 1,  # show IP & port on display\n/getIP = 1,     # receive the IP & port as OSC messages once\n/reportIP = 1,  # continuously receive IP & port\n/reportIP = 0   # stop receiving IP & port\n",
 					"textcolor" : [ 0.0, 0.0, 0.0, 1.0 ]
 				}
 
@@ -73,7 +72,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 204.0, 138.5, 129.0, 20.0 ],
+					"patching_rect" : [ 183.5, 160.0, 129.0, 20.0 ],
 					"text" : "valid OSC messages:"
 				}
 
@@ -96,8 +95,8 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 12.0, 33.0, 129.0, 20.0 ],
-					"text" : "Luke Dzwonczyk 2020"
+					"patching_rect" : [ 12.0, 33.0, 228.0, 20.0 ],
+					"text" : "Luke Dzwonczyk, Jeremy Wagner 2020"
 				}
 
 			}
@@ -122,7 +121,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 256.0, 302.0, 242.0, 60.0 ],
+					"patching_rect" : [ 244.0, 411.0, 242.0, 60.0 ],
 					"text" : "output:\nvalues received from stompbox. an example address is: \n/analog/4 or /digital/10"
 				}
 
@@ -132,13 +131,11 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-11",
-					"linecount" : 13,
 					"maxclass" : "o.display",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 83.0, 278.0, 157.0, 197.0 ],
-					"text" : "/digital/0 : 1,\n/digital/1 : 1,\n/analog/0 : 4095,\n/analog/1 : 4095,\n/analog/2 : 786,\n/analog/3 : 4095,\n/analog/4 : 4095,\n/analog/5 : 371,\n/analog/6 : 176,\n/analog/7 : 346,\n/analog/8 : 4095,\n/analog/9 : 661,\n/button : 4095",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -150,7 +147,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 204.0, 100.5, 150.0, 33.0 ],
+					"patching_rect" : [ 183.5, 125.0, 152.0, 33.0 ],
 					"text" : "input 2: OSC messages to send to the stompbox"
 				}
 
@@ -216,7 +213,7 @@
  ],
 		"dependency_cache" : [ 			{
 				"name" : "cnmat.o.stompbox2.maxpat",
-				"bootpath" : "~/Desktop/Academics/Cal Year 4/Music 201A/stompbox/repo",
+				"bootpath" : "~/CNMAT/stompbox/repo",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
 				"implicit" : 1
