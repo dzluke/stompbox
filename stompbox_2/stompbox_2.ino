@@ -77,6 +77,7 @@ void setup() {
   }
   for (int i = 0; i < num_analog_pins; i++) {
     sprintf(osc_addrs_analog[i], "/analog/%d", i);
+    
     // since there's no calibration yet, assume that the
     // analog pedals will output the range 0 to PIN_MAX_VALUE
     analog_max[i] = PIN_MAX_VALUE;
@@ -229,7 +230,7 @@ void update_calibration() {
     int time_left = (int)((calibration_end_time - curr_time) / 1000);
     lcd.print(time_left);
     for (int i = 0; i < num_analog_pins; i++) {
-      int val = analogRead(i);
+      int val = analogRead(analog_pins[i]);
       analog_min[i] = min(val, analog_min[i]);
       analog_max[i] = max(val, analog_max[i]);
     }
