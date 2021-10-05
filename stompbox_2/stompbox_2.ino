@@ -18,7 +18,7 @@
 
 // pin lists
 const int digital_pins[] = {3, 5};
-const int analog_pins[] = {0, 2, 4, 39, 36, 35, 33, 32, 15, 14};
+const int analog_pins[] = {0, 2, 4, 14, 32, 15, 35, 33, 39, 36};
 const int num_digital_pins = sizeof(digital_pins) / sizeof(int);
 const int num_analog_pins = sizeof(analog_pins) / sizeof(int);
 const int button_pin = 34;
@@ -212,7 +212,8 @@ void calibrate(OSCMessage &msg) {
     calibration_end_time = millis() + calibration_time;
     // Calibrate all digital pins
     for (int i = 0; i < num_digital_pins; i++) {
-      digital_initial_state[i] = digitalRead(i);
+      int pin = digital_pins[i];
+      digital_initial_state[i] = digitalRead(pin);
     }
     for (int i = 0; i < num_analog_pins; i++) {
       analog_min[i] = PIN_MAX_VALUE;
